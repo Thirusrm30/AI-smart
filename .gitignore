@@ -1,0 +1,61 @@
+# ============================
+# Dependencies
+# ============================
+node_modules/
+package-lock.json
+
+# ============================
+# Environment Variables (SECRETS)
+# ============================
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+.env*.local
+
+# ============================
+# Uploads (user-generated content)
+# ============================
+backend/uploads/
+
+# ============================
+# Expo / React Native
+# ============================
+mobile/.expo/
+mobile/dist/
+
+# ============================
+# Logs
+# ============================
+logs/
+*.log
+npm-debug.log*
+
+# ============================
+# OS Files
+# ============================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ============================
+# IDE / Editor Files
+# ============================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ============================
+# Build / Output
+# ============================
+dist/
+build/
+coverage/
+
+# ============================
+# Nested duplicate folder
+# ============================
+AI-SMART-CIVIC/
