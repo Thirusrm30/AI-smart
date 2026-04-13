@@ -1,5 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from '../context/AuthContext';
 import { api } from '../services/api';
 
@@ -18,7 +19,7 @@ export default function Profile({ navigation }) {
     setLoading(true);
     try {
       const response = await api.users.updateMe({ name, email });
-      login(await require('@react-native-async-storage/async-storage').default.getItem('token'), response.user);
+      login(await AsyncStorage.getItem('token'), response.user);
       setEditing(false);
       Alert.alert('Success', 'Profile updated successfully');
     } catch (err) {

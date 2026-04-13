@@ -20,6 +20,7 @@ const uploadImage = async (req, res) => {
         }
 
         const newReport = new Report({
+            reportedBy: req.user ? req.user.id : undefined,
             title: req.body.title || "Untitled Report",
             description: req.body.description || "Civic issue report",
             location: req.body.location || "",

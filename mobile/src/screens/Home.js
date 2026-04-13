@@ -119,7 +119,12 @@ export default function Home({ navigation }) {
         </View>
       ) : (
         reports.slice(0, 6).map(report => (
-          <View key={report._id} style={styles.reportCard}>
+          <TouchableOpacity 
+            key={report._id} 
+            style={styles.reportCard}
+            onPress={() => navigation.navigate('ReportDetail', { report })}
+            activeOpacity={0.8}
+          >
             {report.image && (
               <Image
                 source={{ uri: `${UPLOADS_URL}${report.image}` }}
@@ -146,7 +151,7 @@ export default function Home({ navigation }) {
                 </Text>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         ))
       )}
     </ScrollView>

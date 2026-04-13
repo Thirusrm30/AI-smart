@@ -1,17 +1,20 @@
 import React, { useState, useContext, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, ActivityIndicator, TouchableOpacity, RefreshControl, Alert } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../context/AuthContext';
 import { api } from '../services/api';
-import { UPLOADS_URL, API_URL } from '../services/config';
+import { UPLOADS_URL } from '../services/config';
 
 export default function ReportList() {
+  const navigation = useNavigation();
   const { user } = useContext(AuthContext);
   const [reports, setReports] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updating, setUpdating] = useState(null);
+
+  const isCitizen = user?.role !== 'authority';
 
   useFocusEffect(
     useCallback(() => {
@@ -22,11 +25,25 @@ export default function ReportList() {
   const loadReports = async () => {
     setLoading(true);
     try {
-      const data = await api.reports.getAll();
+      // Citizens see their own reports, authorities see all
+      const data = isCitizen 
+        ? await api.reports.getMyReports() 
+        : await api.reports.getAll();
       setReports(data.data || []);
     } catch (err) {
       console.error('Failed to load reports:', err);
-      Alert.alert('Error', 'Connection failed: ' + err.message);
+      // Fallback: if /reports/my fails (e.g. old reports without reportedBy) 
+      // fall back to all reports
+      if (isCitizen) {
+        try {
+          const data = await api.reports.getAll();
+          setReports(data.data || []);
+        } catch (fallbackErr) {
+          Alert.alert('Error', 'Connection failed: ' + fallbackErr.message);
+        }
+      } else {
+        Alert.alert('Error', 'Connection failed: ' + err.message);
+      }
     }
     setLoading(false);
     setRefreshing(false);
@@ -83,7 +100,11 @@ export default function ReportList() {
   const renderReport = ({ item }) => {
     const reportId = item._id || item.id;
     return (
-    <View style={styles.reportCard}>
+    <TouchableOpacity 
+      style={styles.reportCard}
+      onPress={() => navigation.navigate('ReportDetail', { report: item })}
+      activeOpacity={0.8}
+    >
       {item.image ? (
         <Image
           source={{ uri: `${UPLOADS_URL}${item.image}` }}
@@ -97,14 +118,14 @@ export default function ReportList() {
       )}
       <View style={styles.cardContent}>
         <Text style={styles.cardTitle}>{item.title || 'Untitled'}</Text>
-        <Text style={styles.cardDescription}>{item.description || 'No description'}</Text>
+        <Text style={styles.cardDescription} numberOfLines={2}>{item.description || 'No description'}</Text>
         {item.location ? (
-          <Text style={styles.locationText}>Location: {item.location}</Text>
+          <Text style={styles.locationText}>📍 {item.location}</Text>
         ) : null}
-        {item.aiPrediction?.className ? (
+        {item.aiPrediction?.className && item.aiPrediction.className !== 'unknown' ? (
           <View style={styles.aiTag}>
             <Text style={styles.aiText}>
-              AI: {item.aiPrediction.className} ({(item.aiPrediction.probability * 100).toFixed(0)}%)
+              🤖 AI: {item.aiPrediction.className} ({(item.aiPrediction.probability * 100).toFixed(0)}%)
             </Text>
           </View>
         ) : null}
@@ -124,7 +145,10 @@ export default function ReportList() {
                 {(item.status === 'Pending' || !item.status) && (
                   <TouchableOpacity
                     style={styles.actionButton}
-                    onPress={() => updateStatus(reportId, 'In Progress')}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      updateStatus(reportId, 'In Progress');
+                    }}
                   >
                     <Text style={styles.actionButtonText}>Start Progress</Text>
                   </TouchableOpacity>
@@ -132,7 +156,10 @@ export default function ReportList() {
                 {item.status === 'In Progress' && (
                   <TouchableOpacity
                     style={[styles.actionButton, { backgroundColor: '#10b981' }]}
-                    onPress={() => updateStatus(reportId, 'Resolved')}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      updateStatus(reportId, 'Resolved');
+                    }}
                   >
                     <Text style={styles.actionButtonText}>Mark Resolved</Text>
                   </TouchableOpacity>
@@ -142,7 +169,7 @@ export default function ReportList() {
           </View>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
   };
 
@@ -165,6 +192,7 @@ export default function ReportList() {
 
       <Text style={styles.countText}>
         {filteredReports.length} report{filteredReports.length !== 1 ? 's' : ''} found
+        {isCitizen ? ' (your reports)' : ''}
       </Text>
       
       <FlatList
@@ -176,14 +204,16 @@ export default function ReportList() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>
-              {loading ? 'Loading reports...' : 'No reports found with this filter.'}
+              {loading ? 'Loading reports...' : isCitizen ? 'You haven\'t submitted any reports yet.' : 'No reports found with this filter.'}
             </Text>
             {!loading && (
               <TouchableOpacity 
                 style={styles.reportButton} 
                 onPress={() => navigation.navigate('Report')}
               >
-                <Text style={styles.reportButtonText}>Create First Report</Text>
+                <Text style={styles.reportButtonText}>
+                  {isCitizen ? 'Create Your First Report' : 'Create First Report'}
+                </Text>
               </TouchableOpacity>
             )}
           </View>

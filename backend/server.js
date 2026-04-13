@@ -85,6 +85,7 @@ app.post("/report", auth, reportValidation, handleValidationErrors, async (req, 
         const { title, description, location, latitude, longitude, image } = req.body;
 
         const newReport = new Report({
+            reportedBy: req.user.id,
             title: title.trim(),
             description: description.trim(),
             location: location ? location.trim() : undefined,
@@ -120,6 +121,23 @@ app.get("/reports", async (req, res) => {
         console.error("GET /reports error:", error.message);
         res.status(500).json({
             message: "Failed to fetch reports"
+        });
+    }
+});
+
+// GET /reports/my - Return reports submitted by the logged-in user (Protected)
+app.get("/reports/my", auth, async (req, res) => {
+    try {
+        const reports = await Report.find({ reportedBy: req.user.id }).sort({ createdAt: -1 });
+
+        res.status(200).json({
+            message: "My reports fetched successfully",
+            data: reports
+        });
+    } catch (error) {
+        console.error("GET /reports/my error:", error.message);
+        res.status(500).json({
+            message: "Failed to fetch your reports"
         });
     }
 });
@@ -252,13 +270,22 @@ app.delete("/reports/:id", auth, async (req, res) => {
             });
         }
 
-        const report = await Report.findByIdAndDelete(req.params.id);
+        const report = await Report.findById(req.params.id);
 
         if (!report) {
             return res.status(404).json({
                 message: "Report not found"
             });
         }
+
+        // Only allow deletion if user is the author or an authority
+        if (report.reportedBy && report.reportedBy.toString() !== req.user.id && req.user.role !== "authority") {
+            return res.status(403).json({
+                message: "You do not have permission to delete this report"
+            });
+        }
+        
+        await Report.findByIdAndDelete(req.params.id);
 
         res.status(200).json({
             message: "Report deleted successfully"

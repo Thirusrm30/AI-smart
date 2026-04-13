@@ -60,6 +60,7 @@ export const api = {
 
   reports: {
     getAll: () => request('/reports'),
+    getMyReports: () => request('/reports/my'),
     getOne: (id) => request(`/reports/${id}`),
     create: (data) => request('/report', {
       method: 'POST',

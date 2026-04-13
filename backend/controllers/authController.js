@@ -6,7 +6,7 @@ const crypto = require("crypto");
 // POST /api/auth/register - Register a new user
 exports.register = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, role } = req.body;
 
         // Check if user already exists
         const existingUser = await User.findOne({ email });
@@ -17,16 +17,23 @@ exports.register = async (req, res) => {
         // Hash the password before saving
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create the user
+        // Create the user (role defaults to "citizen" in schema if not provided)
         const user = await User.create({
             name,
             email,
-            password: hashedPassword
+            password: hashedPassword,
+            role: role || "citizen"
         });
 
-        // Return user info WITHOUT the password
+        // Create JWT token for immediate login
+        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+            expiresIn: "7d"
+        });
+
+        // Return token and user info WITHOUT the password
         res.status(201).json({
             message: "User registered successfully",
+            token,
             user: {
                 _id: user._id,
                 name: user.name,
@@ -60,7 +67,7 @@ exports.login = async (req, res) => {
         }
 
         // Create JWT token
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
             expiresIn: "7d"
         });
 
